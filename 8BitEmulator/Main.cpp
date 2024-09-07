@@ -1,5 +1,7 @@
 #include <iostream>
 
-int main() {
+#include "chip8.h"
 
+int main() {
+	std::cout << sizeof(opcode) << "\n";
 }
