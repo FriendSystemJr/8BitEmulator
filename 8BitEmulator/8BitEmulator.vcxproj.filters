@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Headerdateien\Import">
+      <UniqueIdentifier>{dcec21f2-9eab-4f7a-af03-792fd02a9957}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -25,6 +28,24 @@
   <ItemGroup>
     <ClInclude Include="chip8.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="BufferManager.h">
+      <Filter>Headerdateien\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Grid.h">
+      <Filter>Headerdateien\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="InputHandler.h">
+      <Filter>Headerdateien\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Pixel.h">
+      <Filter>Headerdateien\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderAPI.h">
+      <Filter>Headerdateien\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Headerdateien\Import</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
