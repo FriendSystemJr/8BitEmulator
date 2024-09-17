@@ -48,7 +48,13 @@ void Chip8::loadGame(const char* game) {
 		std::cerr << "Couldn't load file!\n";
 		return;
 	}
-	file.read(reinterpret_cast<char*>(m_memory + 0x200), )
+
+	//Read the file and cast unsigned char* to char, then specify max size for loading data
+	file.read(reinterpret_cast<char*>(m_memory + 0x200), sizeof(m_memory) - 0x200);
+	file.close();
+
+	std::cout << "Read " << file.gcount() << " bytes!\n";
+
 }
 
 void Chip8::emulateCycle() {
@@ -83,7 +89,7 @@ void Chip8::emulateCycle() {
 		//
 		break;
 	case 0x6000: //Sets VX to NN
-		//
+		m_V[(m_opcode & 0x0F00) >> 8] = m_opcode & 0x00FF;
 		break;
 	case 0x7000: //Adds NN to VX (carry flag is not changed)
 		//
@@ -91,28 +97,58 @@ void Chip8::emulateCycle() {
 	case 0x8000:
 		switch (m_opcode & 0x000F) {
 		case 0x0000: //Sets VX to the value of VY
-			//
+			m_V[(m_opcode & 0x0F00) >> 8] = m_V[(m_opcode & 0x00F0) >> 4];
+			m_pc += 2;
 			break;
 		case 0x0001: //Sets VX to VX or VY. (bitwise OR operation)
-			//
+			m_V[(m_opcode & 0x0F00) >> 8] = m_V[(m_opcode & 0x0F00) >> 8] | m_V[(m_opcode & 0x00F0) >> 4];
+			m_pc += 2;
 			break;
 		case 0x0002: //Sets VX to VX and VY. (bitwise AND operation)
-			//
+			m_V[(m_opcode & 0x0F00) >> 8] = m_V[(m_opcode & 0x0F00) >> 8] & m_V[(m_opcode & 0x00F0) >> 4];
+			m_pc += 2;
 			break;
 		case 0x0003: //Sets VX to VX xor VY
-			//
+			m_V[(m_opcode & 0x0F00) >> 8] = m_V[(m_opcode & 0x0F00) >> 8] ^ m_V[(m_opcode & 0x00F0) >> 4];
+			m_pc += 2;
 			break;
 		case 0x0004: //Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not
-			//
+			m_V[(m_opcode & 0x0F00) >> 8] += m_V[(m_opcode & 0x00F0) >> 4];
+			if (m_V[(m_opcode & 0x0F00) >> 8] < m_V[(m_opcode & 0x00F0) >> 4]) {
+				m_V[15] = 1;
+			}
+			else {
+				m_V[15] = 0;
+			}
+			m_pc += 2;
 			break;
 		case 0x0005: //VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not)
-			//
+			if (m_V[(m_opcode & 0x0F00) >> 8] < m_V[(m_opcode & 0x00F0) >> 4]) {
+				m_V[15] = 0;
+			}
+			else {
+				m_V[15] = 1;
+			}
+			m_V[(m_opcode & 0x0F00) >> 8] -= m_V[(m_opcode & 0x00F0) >> 4];
+
+			m_pc += 2;
 			break;
 		case 0x0006: //Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF
-			//
+			m_V[15] = m_V[(m_opcode & 0x0F00) >> 8] & 0x1;
+			m_V[(m_opcode & 0x0F00) >> 8] >>= 1;
+
+			m_pc += 2;
 			break;
 		case 0x0007: //Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX)
-			//
+			if (m_V[(m_opcode & 0x00F0) >> 4] < m_V[(m_opcode & 0x0F00)]) {
+				m_V[15] = 0;
+			}
+			else {
+				m_V[15] = 1;
+			}
+			m_V[(m_opcode & 0x0F00) >> 8] = m_V[(m_opcode & 0x00F0) >> 4] - m_V[(m_opcode & 0x0F00) >> 8];
+
+			m_pc += 2;
 			break;
 		case 0x000E: //Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset
 			//

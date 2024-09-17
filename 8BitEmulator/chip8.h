@@ -17,7 +17,7 @@ private:
 	//Graphics
 	Renderer::Grid& m_grid;
 
-	//stores the (current?) opcode (2 bytes)
+	//stores the current opcode (2 bytes)
 	unsigned short m_opcode;
 
 	/*

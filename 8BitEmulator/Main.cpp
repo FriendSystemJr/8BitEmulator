@@ -13,4 +13,5 @@ int main() {
 
 	Chip8 chip{ grid };
 	chip.initialize();
+	chip.loadGame("test_opcode.ch8");
 }
