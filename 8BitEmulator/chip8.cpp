@@ -1,5 +1,9 @@
 #include "chip8.h"
+
 #include <fstream>
+#include <random>
+
+unsigned int randomNumber();
 
 Chip8::Chip8(Renderer::Grid& grid) : m_grid(grid) {
 }
@@ -65,34 +69,55 @@ void Chip8::emulateCycle() {
 	switch (m_opcode & 0xF000) {
 	case 0x0000:
 		switch (m_opcode & 0x000F) {
-		case 0x0000: //Clears the screen
+		case 0x0000: //Clears the screen TODO: Rework for chip-8 logic
 			m_grid.Clear();
+			m_pc += 2;
 			break;
 		case 0x000E: //Return from subroutine
-			//
+			--m_sp;
+			m_pc = m_stack[m_sp];
+			m_pc += 2;
 			break;
 		}
 		break;
 	case 0x1000: //Jumps to address NNN
-		//
+		m_pc = m_opcode & 0x0FFF;
 		break;
 	case 0x2000: //Calls subroutine at NNN
-		//
+		m_stack[m_sp] = m_pc;
+		++m_sp;
+		m_pc = m_opcode & 0x0FFF;
 		break;
 	case 0x3000: //Skips the next instruction if VX equals NN(usually the next instruction is a jump to skip a code block)
-		//
+		if (m_V[(m_opcode & 0x0F00) >> 8] == 0x00FF) {
+			m_pc += 4;
+		}
+		else {
+			m_pc += 2;
+		}
 		break;
 	case 0x4000: //Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block)
-		//
+		if (m_V[(m_opcode & 0x0F00) >> 8] != 0x00FF) {
+			m_pc += 4;
+		}
+		else {
+			m_pc += 2;
+		}
 		break;
 	case 0x5000: //Skips the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block)
-		//
+		if (m_V[(m_opcode & 0x0F00) >> 8] == m_V[(m_opcode & 0x00F0) >> 4]) {
+			m_pc += 4;
+		}
+		else {
+			m_pc += 2;
+		}
 		break;
 	case 0x6000: //Sets VX to NN
 		m_V[(m_opcode & 0x0F00) >> 8] = m_opcode & 0x00FF;
 		break;
 	case 0x7000: //Adds NN to VX (carry flag is not changed)
-		//
+		m_V[(m_opcode & 0x0F00) >> 8] += m_opcode & 0x00FF;
+		m_pc += 2;
 		break;
 	case 0x8000:
 		switch (m_opcode & 0x000F) {
@@ -140,7 +165,7 @@ void Chip8::emulateCycle() {
 			m_pc += 2;
 			break;
 		case 0x0007: //Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX)
-			if (m_V[(m_opcode & 0x00F0) >> 4] < m_V[(m_opcode & 0x0F00)]) {
+			if (m_V[(m_opcode & 0x00F0) >> 4] < m_V[(m_opcode & 0x0F00) >> 8]) {
 				m_V[15] = 0;
 			}
 			else {
@@ -151,12 +176,19 @@ void Chip8::emulateCycle() {
 			m_pc += 2;
 			break;
 		case 0x000E: //Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset
-			//
+			m_V[15] = (m_V[(m_opcode & 0x0F00) >> 8] & 0x80) ? 1 : 0;
+			m_V[(m_opcode & 0x0F00) >> 8] <<= 1;
+			m_pc += 2;
 			break;
 		}
 		break;
 	case 0x9000: //Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block)
-		//
+		if (m_V[(m_opcode & 0x0F00) >> 8] != m_V[(m_opcode & 0x00F0) >> 4]) {
+			m_pc += 4;
+		}
+		else {
+			m_pc += 2;
+		}
 		break;
 
 	case 0xA000: //ANNN: Sets I to the address NNN
@@ -165,10 +197,11 @@ void Chip8::emulateCycle() {
 		break;
 
 	case 0xB000: //Jumps to the address NNN plus V0
-		//
+		m_pc = (m_opcode & 0x0FFF) + m_V[0];
 		break;
 	case 0xC000: //Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
-		//
+		m_V[(m_opcode & 0x0F00) >> 8] = (m_opcode & 0x00FF) & randomNumber();
+		m_pc += 2;
 		break;
 	case 0xD000: //Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded starting from memory location I; I value does not change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen
 		//
@@ -186,19 +219,23 @@ void Chip8::emulateCycle() {
 	case 0xF000:
 		switch (m_opcode & 0x00FF) {
 		case 0x0007: //Sets VX to the value of the delay timer
-			//
+			m_V[(m_opcode & 0x0F00) >> 8] = m_delay_timer;
+			m_pc += 2;
 			break;
 		case 0x000A: //A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event)
 			//
 			break;
 		case 0x0015: //Sets the delay timer to VX
-			//
+			m_delay_timer = m_V[(m_opcode & 0x0F00) >> 8];
+			m_pc += 2;
 			break;
 		case 0x0018: //Sets the sound timer to VX
-			//
+			m_sound_timer = m_V[(m_opcode & 0x0F00) >> 8];
+			m_pc += 2;
 			break;
 		case 0x001E: //Adds VX to I. VF is not affected
-			//
+			m_I += m_V[(m_opcode & 0x0F00) >> 8];
+			m_pc += 2;
 			break;
 		case 0x0029: //Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
 			//
@@ -210,7 +247,9 @@ void Chip8::emulateCycle() {
 			//
 			break;
 		case 0x0065: //Fills from V0 to VX (including VX) with values from memory, starting at address I. The offset from I is increased by 1 for each value read, but I itself is left unmodified
-			//
+			for (int i = 0; i <= (m_opcode & 0x0F00) >> 8; ++i) {
+				m_V[i] = m_memory[m_I + i];
+			}
 			break;
 		}
 		break;
@@ -219,4 +258,13 @@ void Chip8::emulateCycle() {
 		std::cout << "Couldn't find opcode: "<< m_opcode <<"!\n";
 	}
 
+}
+
+unsigned int randomNumber() {
+	std::random_device seed;
+	std::mt19937 gen{ seed() };
+
+	std::uniform_int_distribution<> num{ 0, 255 };
+
+	return num(gen);
 }
