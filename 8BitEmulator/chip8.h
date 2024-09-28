@@ -9,7 +9,9 @@ public:
 	void initialize();
 	void loadGame(const char* game);
 	void emulateCycle();
-	bool drawFlag();
+	bool drawFlag;
+
+	const unsigned char(&GetGFX() const)[64][32];
 
 private:
 	//Variables
@@ -42,7 +44,7 @@ private:
 	unsigned short m_pc;
 
 	//Graphics
-	unsigned char m_gfx[64 * 32];
+	unsigned char m_gfx[64][32];
 
 	//Timers
 	//Registers that count at 60 hz. When set above zero they count down to zero

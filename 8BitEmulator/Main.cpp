@@ -14,4 +14,20 @@ int main() {
 	Chip8 chip{ grid };
 	chip.initialize();
 	chip.loadGame("test_opcode.ch8");
+
+	while (!Renderer::windowShouldClose()) {
+		chip.emulateCycle();
+
+		if (chip.drawFlag) {
+			for (int x = 0; x < 64; ++x) {
+				for (int y = 0; y < 32; ++y) {
+					if (chip.GetGFX()[x][y]) {
+
+					}
+				}
+			}
+		}
+
+		Renderer::RenderGrid(grid, shader);
+	}
 }
