@@ -6,6 +6,7 @@
 unsigned int randomNumber();
 
 Chip8::Chip8(Renderer::Grid& grid) : m_grid(grid) {
+	drawFlag = false;
 }
 
 const unsigned char(&Chip8::GetGFX() const)[64][32]{
@@ -21,7 +22,7 @@ void Chip8::initialize() {
 	//Clear display
 	for (int i = 0; i < 64; ++i) {
 		for (int j = 0; j < 32; ++j) {
-			m_gfx[i][j];
+			m_gfx[i][j] = 0;
 		}
 	}
 
@@ -71,7 +72,7 @@ void Chip8::emulateCycle() {
 	//Fetch opcode
 	m_opcode = m_memory[m_pc] << 8 | m_memory[m_pc + 1];
 
-	std::cout << "Instruction: " << m_opcode << "\n";
+	std::cout << "Instruction: " << std::hex << m_opcode << "\n";
 
 	//Decode opcode (1x Opcode = 4x 4 bit; durch bit-AND alle bits 0 außer ersten 4 (höchster Nibble um Opcode-Kategorie zu filtern))
 	switch (m_opcode & 0xF000) {
@@ -89,6 +90,9 @@ void Chip8::emulateCycle() {
 		}
 		break;
 	case 0x1000: //Jumps to address NNN
+		if (m_opcode == 0x13DC) {
+			int a;
+		}
 		m_pc = m_opcode & 0x0FFF;
 		break;
 	case 0x2000: //Calls subroutine at NNN
@@ -97,7 +101,7 @@ void Chip8::emulateCycle() {
 		m_pc = m_opcode & 0x0FFF;
 		break;
 	case 0x3000: //Skips the next instruction if VX equals NN(usually the next instruction is a jump to skip a code block)
-		if (m_V[(m_opcode & 0x0F00) >> 8] == 0x00FF) {
+		if (m_V[(m_opcode & 0x0F00) >> 8] == (m_opcode & 0x00FF)) {
 			m_pc += 4;
 		}
 		else {
@@ -105,7 +109,7 @@ void Chip8::emulateCycle() {
 		}
 		break;
 	case 0x4000: //Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block)
-		if (m_V[(m_opcode & 0x0F00) >> 8] != 0x00FF) {
+		if (m_V[(m_opcode & 0x0F00) >> 8] != (m_opcode & 0x00FF)) {
 			m_pc += 4;
 		}
 		else {
@@ -185,7 +189,7 @@ void Chip8::emulateCycle() {
 			m_pc += 2;
 			break;
 		case 0x000E: //Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset
-			m_V[15] = (m_V[(m_opcode & 0x0F00) >> 8] & 0x80) ? 1 : 0;
+			m_V[15] = m_V[(m_opcode & 0x0F00) >> 8] & 0x1;
 			m_V[(m_opcode & 0x0F00) >> 8] <<= 1;
 			m_pc += 2;
 			break;
@@ -214,6 +218,9 @@ void Chip8::emulateCycle() {
 		break;
 	case 0xD000: //Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded starting from memory location I; I value does not change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen
 		{
+
+		std::cout << std::hex << m_opcode << "\n";
+
 		unsigned short x = m_V[(m_opcode & 0x0F00) >> 8];
 		unsigned short y = m_V[(m_opcode & 0x00F0) >> 4];
 		unsigned short height = (m_opcode & 0x000F);
@@ -223,7 +230,7 @@ void Chip8::emulateCycle() {
 
 		//Use the height to know how many values to read from I
 		for (int yline = 0; yline < height; ++yline) {
-			pixel = m_memory[m_I + height];
+			pixel = m_memory[m_I + yline];
 			for (int xline = 0; xline < 8; ++xline) {
 				// 0xFF for example in pixel
 				//1111 1111
@@ -233,12 +240,14 @@ void Chip8::emulateCycle() {
 						m_V[15] = 1;
 					}
 					m_gfx[x + xline][y + yline] ^= 1;
+					drawFlag = true;
 				}
 			}
 		}
-		drawFlag = true;
-		m_pc += 2;
+		
+		
 	}
+		m_pc += 2;
 		break;
 	case 0xE000:
 		switch (m_opcode & 0x00FF) {
