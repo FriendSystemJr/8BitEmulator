@@ -231,7 +231,6 @@ void Chip8::emulateCycle() {
 				if((pixel & (0x80 >> xline)) != 0) {
 					if (m_gfx[x + xline][y + yline] == 1) {
 						m_V[15] = 1;
-						
 					}
 					m_gfx[x + xline][y + yline] ^= 1;
 				}
@@ -274,9 +273,11 @@ void Chip8::emulateCycle() {
 			break;
 		case 0x0029: //Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
 			//
+			m_pc += 2;
 			break;
 		case 0x0033: //Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2
 			//
+			m_pc += 2;
 			break;
 		case 0x0055: //Stores from V0 to VX (including VX) in memory, starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified
 			for (int i = 0; i <= (m_opcode & 0x0F00) >> 8; ++i) {
@@ -288,6 +289,7 @@ void Chip8::emulateCycle() {
 			for (int i = 0; i <= (m_opcode & 0x0F00) >> 8; ++i) {
 				m_V[i] = m_memory[m_I + i];
 			}
+			m_pc += 2;
 			break;
 		}
 		break;

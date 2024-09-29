@@ -19,10 +19,11 @@ int main() {
 		chip.emulateCycle();
 
 		if (chip.drawFlag) {
+			grid.Clear();
 			for (int x = 0; x < 64; ++x) {
 				for (int y = 0; y < 32; ++y) {
-					if (chip.GetGFX()[x][y]) {
-
+					if (chip.GetGFX()[x][y] == 1) {
+						grid.SetPixel(63 - x, 31 - y);
 					}
 				}
 			}
