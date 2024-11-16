@@ -13,6 +13,9 @@ public:
 
 	const unsigned char(&GetGFX() const)[64][32];
 
+	//HEX-based keypad (0x0-0xF)
+	unsigned char m_key[16];
+
 private:
 	//Variables
 
@@ -61,9 +64,6 @@ private:
 	unsigned short m_stack[16];
 	//Stack ptr
 	unsigned short m_sp;
-
-	//HEX-based keypad (0x0-0xF)
-	unsigned char m_key[16];
 
 	//Fontset (Each number/character is 4 pixels wide and 5 pixels high)
 

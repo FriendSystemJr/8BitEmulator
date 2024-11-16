@@ -7,6 +7,11 @@ unsigned int randomNumber();
 
 Chip8::Chip8(Renderer::Grid& grid) : m_grid(grid) {
 	drawFlag = false;
+
+	//init key
+	for (int i = 0; i < 15; ++i) {
+		m_key[i] = 0;
+	}
 }
 
 const unsigned char(&Chip8::GetGFX() const)[64][32]{
@@ -72,7 +77,7 @@ void Chip8::emulateCycle() {
 	//Fetch opcode
 	m_opcode = m_memory[m_pc] << 8 | m_memory[m_pc + 1];
 
-	std::cout << "Instruction: " << std::hex << m_opcode << "\n";
+	//std::cout << "Instruction: " << std::hex << m_opcode << "\n";
 
 	//Decode opcode (1x Opcode = 4x 4 bit; durch bit-AND alle bits 0 außer ersten 4 (höchster Nibble um Opcode-Kategorie zu filtern))
 	switch (m_opcode & 0xF000) {
@@ -80,6 +85,13 @@ void Chip8::emulateCycle() {
 		switch (m_opcode & 0x000F) {
 		case 0x0000: //Clears the screen TODO: Rework for chip-8 logic
 			m_grid.Clear();
+
+			for (int i = 0; i < 64; ++i) {
+				for (int j = 0; j < 32; ++j) {
+					m_gfx[i][j] = 0;
+				}
+			}
+
 			m_pc += 2;
 			break;
 		case 0x000E: //Return from subroutine
@@ -126,6 +138,7 @@ void Chip8::emulateCycle() {
 		break;
 	case 0x6000: //Sets VX to NN
 		m_V[(m_opcode & 0x0F00) >> 8] = m_opcode & 0x00FF;
+		//std::cout << "Opcode stored: " << (m_opcode & 0x00FF) << "\n";
 		m_pc += 2;
 		break;
 	case 0x7000: //Adds NN to VX (carry flag is not changed)
@@ -219,7 +232,7 @@ void Chip8::emulateCycle() {
 	case 0xD000: //Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded starting from memory location I; I value does not change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen
 		{
 
-		std::cout << std::hex << m_opcode << "\n";
+		//std::cout << std::hex << m_opcode << "\n";
 
 		unsigned short x = m_V[(m_opcode & 0x0F00) >> 8];
 		unsigned short y = m_V[(m_opcode & 0x00F0) >> 4];
@@ -252,10 +265,22 @@ void Chip8::emulateCycle() {
 	case 0xE000:
 		switch (m_opcode & 0x00FF) {
 		case 0x009E: //Skips the next instruction if the key stored in VX is pressed (usually the next instruction is a jump to skip a code block)
-			//
+			if (m_key[m_V[(m_opcode & 0x0F00) >> 8]] != 0) {
+				m_pc += 4;
+			}
+			else {
+				m_pc += 2;
+			}
+
 			break;
 		case 0x00A1: //Skips the next instruction if the key stored in VX is not pressed (usually the next instruction is a jump to skip a code block)
-			//
+			//std::cout << "Key: " << m_V[(m_opcode & 0x0F00) >> 8] << "\n";
+			if (m_key[m_V[(m_opcode & 0x0F00) >> 8]] == 0) {
+				m_pc += 4;
+			}
+			else {
+				m_pc += 2;
+			}
 			break;
 		}
 		break;
@@ -266,7 +291,20 @@ void Chip8::emulateCycle() {
 			m_pc += 2;
 			break;
 		case 0x000A: //A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event)
-			//
+			{
+				bool keyPress = false;
+			
+				for (int i = 0; i < 16; ++i) {
+					if (m_key[i] != 0) {
+						m_V[(m_opcode & 0x0F00) >> 8] = i;
+						keyPress = true;
+					}
+				}
+
+				if (!keyPress)
+					return;
+			}
+			m_pc += 2;
 			break;
 		case 0x0015: //Sets the delay timer to VX
 			m_delay_timer = m_V[(m_opcode & 0x0F00) >> 8];
@@ -281,11 +319,13 @@ void Chip8::emulateCycle() {
 			m_pc += 2;
 			break;
 		case 0x0029: //Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
-			//
+			m_I = m_V[(m_opcode & 0x0F00) >> 8] * 0x5;
 			m_pc += 2;
 			break;
 		case 0x0033: //Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2
-			//
+			m_memory[m_I] = m_V[(m_opcode & 0x0F00) >> 8] / 100;
+			m_memory[m_I + 1] = (m_V[(m_opcode & 0x0F00) >> 8] / 10) % 10;
+			m_memory[m_I + 2] = (m_V[(m_opcode & 0x0F00) >> 8] % 100) % 10;
 			m_pc += 2;
 			break;
 		case 0x0055: //Stores from V0 to VX (including VX) in memory, starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified
@@ -306,7 +346,15 @@ void Chip8::emulateCycle() {
 	default:
 		std::cout << "Couldn't find opcode: "<< m_opcode <<"!\n";
 	}
+	if (m_delay_timer > 0)
+		--m_delay_timer;
 
+	if (m_sound_timer > 0)
+	{
+		if (m_sound_timer == 1)
+			printf("BEEP!\n");
+		--m_sound_timer;
+	}
 }
 
 unsigned int randomNumber() {
